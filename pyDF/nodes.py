@@ -1,6 +1,6 @@
 #Sucuri - Minimalistic Python Dataflow Programming Library
 #author: tiago@ime.uerj.br
-from pydf import *
+from pyDF.pydf import *
 import bisect
 
 
@@ -50,34 +50,34 @@ class Source(Node): #source class
             self.sendops(opers, operq)
 
     def f(self, line, args):
-		#default source operation
+        #default source operation
         return line
 
 
 class FlipFlop(Node):
-	def __init__(self, f):
-		self.f = f
-		self.inport = [[],[]]
-		self.dsts = []
-		self.affinity = None
+    def __init__(self, f):
+        self.f = f
+        self.inport = [[],[]]
+        self.dsts = []
+        self.affinity = None
 
-	def run(self, args, workerid, operq):
-		opers = self.create_oper(self.f([a.val for a in args]), workerid, operq)
+    def run(self, args, workerid, operq):
+        opers = self.create_oper(self.f([a.val for a in args]), workerid, operq)
 
-		if opers[0].val == False:
-			opers = [Oper(workerid, None, None, None)]
-		self.sendops(opers, operq)
+        if opers[0].val == False:
+            opers = [Oper(workerid, None, None, None)]
+        self.sendops(opers, operq)
 
 
 class FilterTagged(Node): #produce operands in the form of TaggedValue, with the same tag as the input
     def __init__(self, f, inputn):
-    	Node.__init__(self, f, inputn)
-    	self.match_dict = {}
-    	#self.arg_buffer = [[] for i in range(inputn)]
+        Node.__init__(self, f, inputn)
+        self.match_dict = {}
+        #self.arg_buffer = [[] for i in range(inputn)]
         self.inputn = inputn
-    	self.f = f
+        self.f = f
         #print("Selfdst {}".format(self.dsts))
-        
+
     def insert_op(self, dstport, oper):
         #print("opertype {}".format(oper.val))
         tag = oper.val.tag
@@ -85,7 +85,7 @@ class FilterTagged(Node): #produce operands in the form of TaggedValue, with the
 
         #print("match dict {}".format(self.match_dict))
         if oper.val.tag in self.match_dict:
-         #   print("Appending")
+            #   print("Appending")
             self.match_dict[tag].append(value)
         else:
             self.match_dict[tag] = [value]
@@ -101,7 +101,7 @@ class FilterTagged(Node): #produce operands in the form of TaggedValue, with the
             return None
         args = [TaggedValue(val, tag) for val in self.match_dict.pop(tag)]
         return args
-        
+
 
 
 
@@ -111,8 +111,8 @@ class FilterTagged(Node): #produce operands in the form of TaggedValue, with the
         argvalues = [arg.value for arg in args]
         tag = args[0].tag
         #print("Args {}".format(args))
-        
-	    
+
+
 
         result = self.f(argvalues)
         if result != None:
@@ -137,40 +137,40 @@ class Feeder(Node):
 
 
 class Serializer(Node):
-	def __init__(self, f, inputn):
-		Node.__init__(self, f, inputn)
-		self.serial_buffer = []
-		self.next_tag = 0
-		self.arg_buffer = [[] for i in range(inputn)]
-		self.f = f
-		self.affinity = [0] #default affinity to Worker-0 (Serializer HAS to be pinned)
+    def __init__(self, f, inputn):
+        Node.__init__(self, f, inputn)
+        self.serial_buffer = []
+        self.next_tag = 0
+        self.arg_buffer = [[] for i in range(inputn)]
+        self.f = f
+        self.affinity = [0] #default affinity to Worker-0 (Serializer HAS to be pinned)
 
-	def run(self, args, workerid, operq):
-		if args[0] == None:
+    def run(self, args, workerid, operq):
+        if args[0] == None:
             #TODO: check if this if-statement is still necessary.
-			opers = [Oper(workerid, None, None, None)]
-			self.sendops(opers, operq)
-			return 0
-			
-		for (arg, argbuffer) in map(None, args, self.arg_buffer):
-			bisect.insort(argbuffer, arg.val)
-			#print "Argbuffer %s" %argbuffer
-		#print "Got operand with tag %s (expecting %d) %s Worker %d" %([arg.val for arg in args], self.next_tag, [arg.val for arg in argbuffer], workerid)
-		if args[0].val.tag == self.next_tag:
-			next = self.next_tag
-			argbuffer = self.arg_buffer
-			buffertag = argbuffer[0][0].tag
-			while buffertag == next:
-				args = [arg.pop(0) for arg in argbuffer]
-				print("Sending oper with tag {}".format(args[0].tag))	
-				opers = self.create_oper(self.f([arg.value for arg in args]), workerid, operq)
-				self.sendops(opers, operq)
-				next += 1
-				if len(argbuffer[0]) > 0:
-					buffertag = argbuffer[0][0].tag
-				else:
-					buffertag = None
+            opers = [Oper(workerid, None, None, None)]
+            self.sendops(opers, operq)
+            return 0
 
-			self.next_tag = next
+        for (arg, argbuffer) in map(None, args, self.arg_buffer):
+            bisect.insort(argbuffer, arg.val)
+            #print "Argbuffer %s" %argbuffer
+        #print "Got operand with tag %s (expecting %d) %s Worker %d" %([arg.val for arg in args], self.next_tag, [arg.val for arg in argbuffer], workerid)
+        if args[0].val.tag == self.next_tag:
+            next = self.next_tag
+            argbuffer = self.arg_buffer
+            buffertag = argbuffer[0][0].tag
+            while buffertag == next:
+                args = [arg.pop(0) for arg in argbuffer]
+                print("Sending oper with tag {}".format(args[0].tag))	
+                opers = self.create_oper(self.f([arg.value for arg in args]), workerid, operq)
+                self.sendops(opers, operq)
+                next += 1
+                if len(argbuffer[0]) > 0:
+                    buffertag = argbuffer[0][0].tag
+                else:
+                    buffertag = None
+
+            self.next_tag = next
 
 

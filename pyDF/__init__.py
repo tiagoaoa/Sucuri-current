@@ -1,2 +1,2 @@
-from pydf import *
-from nodes import *
+from pyDF.pydf import *
+from pyDF.nodes import *
