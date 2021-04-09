@@ -1,5 +1,5 @@
 #Python Dataflow Library
-#Tiago A.O.Alfes <tiago@ime.uerj.br>
+#Tiago Alves <tiago@ime.uerj.br>
 
 from multiprocessing import Process, Queue, Value, Pipe
 import threading
