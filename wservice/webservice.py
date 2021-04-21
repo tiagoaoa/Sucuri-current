@@ -15,14 +15,23 @@ class Iter_Queue():
         self.q = Queue()
 
     def put(self, x):
-        print("Enqueueing {}".format(args))
+        print("Enqueueing {}".format(x))
         self.q.put(x)
 
     def __iter__(self):
             yield self.q.get()
 
 
+
 ResponseQueues = {}
+
+class SourceWS(Source):
+    def f(self, line, args):
+        print("Receiving request {} {}".format(line, self.tagcounter))
+        ResponseQueues[self.tagcounter] = Queue()
+        return line
+    
+
 class ThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     pass
 
@@ -43,10 +52,9 @@ class WebService(Process):
         def service(args):
             resp_q = ResponseQueues
             print("Args in service {}".format(args))
-            ResponseQueues[id(args)] = Queue()
             
             self.req_queue.put(args)
-            rq = ResponseQueues.pop(id(args))
+            rq = ResponseQueues.pop(args.tag)
             
             print("Queues {}".format(ResponseQueues))
             return rq.get()
@@ -66,12 +74,11 @@ class WebService(Process):
              
 
 def response_enqueue(args):
-    print("Args to enqueue {}".format(args))
-    ResponseQueues[args.tag] = args.value
-    return argdasdasdadsa
+    print("Args to enqueue {}".format(args[0]))
+    ResponseQueues[args[0].tag] = args[0].value
+    print("Queue is {}".format(ResponseQueues))
 
-def print_args(args):
-    print("Args were {}".format(args))
+
 
 
 nprocs = int(sys.argv[1])
@@ -82,20 +89,20 @@ sched = Scheduler(graph, nprocs, mpi_enabled = False)#, wservice = ("localhost",
 
 wservice = WebService(("localhost", 8000))
 wservice.start()
+
 req_iter = wservice.req_queue
 
 
-reqs = Source(req_iter)
+reqs = SourceWS(req_iter)
 
-response = Node(response_enqueue,1)
+response = Node(response_enqueue, 1)
 
 
-print_node = Node(print_args, 1)
 graph.add(reqs)
 
-graph.add(print_node)
+graph.add(response)
 
-reqs.add_edge(print_node, 0)
+reqs.add_edge(response, 0)
 
 
 
