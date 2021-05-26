@@ -8,7 +8,7 @@ from pyDF import *
 
 def print_line(args):
 	line = args[0]
-	print "-- " + line[:-1] + " --"
+	print("-- {} --".format(line[:-1]))
 
 nprocs = int(sys.argv[1])
 
