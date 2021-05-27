@@ -35,12 +35,11 @@ class Iter_Queue():
 class NodeDebug(Node):
     def __repr__(self):
         return "Node for Debugging {}".format(id(self))
-class NodeWS(Node):
 
 
 class SourceWS(Source):
     def f(self, line, args):
-        print("[SourceWS] Receiving request {} {}".format(line, self.tagcounter))
+        print("[SourceWS] Receiving request {} {}".format(line, args))
 
         #ResponseQueues[self.tagcounter] = Queue()
 #        print("[SourceWS] Waiting... {}".format(ResponseQueues))
@@ -64,6 +63,11 @@ class ThreadedDict(dict):
         self._lock__.release()
         self.__cond__.notify_all()
 
+    def wait(self):
+        #self.__lock__.release()
+        print("Released lock")
+        with self.__cond__ as cond:
+            cond.wait()
 
 class WebService(Process):
     def __init__(self, server):
@@ -73,61 +77,61 @@ class WebService(Process):
         server = ThreadedXMLRPCServer(server)
         print("Listening on port 8000.")
         #server.register_function(lambda args: print("Args {}".format(args)), 'service')
-
-        self.server = server
         self.req_queue = Iter_Queue()
-        self.resp_queue = {777: "Teste"}
+        self.server = server
         self.d = ThreadedDict()
-        self.node = SourceWS(self.req_queue)
 
     def resp_loop(self):
         d = self.d
         while True:
-            x, val = self.resp_conn.get()
+            print("Getting resposes")
+            x, val = self.resp_conn.recv()
+            print("Got a response")
             d.lock()
             d[x] = val
             d.signalAll()
 
 
 
-    def get_response(x):
+    def get_response(self, x):
+        print("Waiting for response {}".format(x))
         d = self.d
         resp = None
         d.lock()
-         while resp == None:
-            if d.has_key(x) 
+        print("Got lock {}".format(x))
+        while resp == None:
+            if x in d:
+                print("Getting {}".format(x))
                 resp = d.pop(x)
-                    d.unlock()
+                d.unlock()
             else:
+                print("Waiting for {}".format(x))
                 d.wait()  #wait() releases and acquires the lock after the condition is notified
 
         return resp
 
-    def service(args):
+    def service(self, args):
         thread_name = threading.currentThread().getName()
-        print("Fila {}".format(self.resp_queue))
+        print("Fila {} Thread {} args {}".format(self.d, thread_name, args))
         self.req_queue.put(args)
-            
+        
         return self.get_response(thread_name)
-            """rq = self.resp_q
+        """rq = self.resp_q
             rq = self.resp_queue[thread_name] = Queue()
             print("[Service] Out {}".format(rq.get))
             print("[Service] Queues {} {}".format(self.resp_q, id(rq)))
             print("Args in service {} queue {} {} thread {}".format(args, self.resp_queue, self.req_queue, threading.currentThread().getName()))"""
-        return 7777
+        #return 7777
 
 
 
     def run(self):
         print("WebService Running")
-        threading.Thread(target = resp_loop)
+        threading.Thread(target = self.resp_loop).start()
         server = self.server
-        server.register_function(service)
-        count = 0
+        server.register_function(self.service)
         while True:
             req, cl_addr = server.get_request()
-            count += 1
-            self.resp_queue[count] = Queue()
             server.process_request(req, cl_addr)
             #req.sendall(b'1234')
             #server.handle_request()
@@ -139,7 +143,8 @@ class NodeWS(Node):
         Node.__init__(self, None, number_of_input_ports)
         self.resp_conn = resp_conn
     def run(self, args, workerid, operq):
-        self.resp_conn.put((args[0].tag, args[0].value))
+        print("Args {}".format(args[0].val))
+        self.resp_conn.send((args[0].val.tag, args[0].val.value))
       
         opers = self.create_oper(None, workerid, operq)
         self.sendops(opers, operq)
@@ -154,19 +159,21 @@ class SchedulerWS(Scheduler):
 
     def set_wservice(self, wservice):
         self.ws = WebService(wservice)
-        self.resp_q = {'Test': 'abc'}
         resp_conn, wservice_conn = Pipe()
         conn = self.workers[1].conn
         self.workers[1] = Worker(self.graph, self.operq, conn, 1)
         
         self.ws.resp_conn = wservice_conn
+        req_iter = self.ws.req_queue
 
+        req_node = SourceWS(req_iter)
         resp_node = NodeWS(resp_conn)
         self.ws.start()
 
-        self.add(resp_node)
         resp_node.pin([1])
-        return resp_node
+        req_node.pin([0])
+
+        return req_node, resp_node
 
 
 
@@ -187,20 +194,18 @@ nprocs = int(sys.argv[1])
 
 graph = DFGraph()
 sched = SchedulerWS(graph, nprocs, mpi_enabled = False)#, wservice = ("localhost", 8000))
-resp_node = sched.set_ws(("localhost", 8000))
+req_node, resp_node = sched.set_wservice(("localhost", 8000))
 
 
 
 
-#reqs = SourceWS(iter_q)
 
 
-graph.add(reqs)
+graph.add(req_node)
+graph.add(resp_node)
 
+req_node.add_edge(resp_node, 0)
 
-reqs.add_edge(resp_node, 0)
-
-reqs.pin([0])
 
 sched.start()
 
