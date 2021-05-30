@@ -130,8 +130,8 @@ class NodeWS(Node):
         print("Args {}".format(args[0].val))
         self.resp_conn.send((args[0].val.tag, args[0].val.value))
       
-        opers = self.create_oper(None, workerid, operq) #necessary to make worker request more tasks
-        self.sendops(opers, operq)
+      #  opers = self.create_oper(None, workerid, operq) #necessary to make worker request more tasks
+      #  self.sendops(opers, operq)
  
 
 
