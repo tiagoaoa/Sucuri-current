@@ -7,7 +7,7 @@ from pyDF import *
 def psum(args):
 
 	n, nprocs = args[0][0], args[0][1]
-	n /= nprocs
+	n = n // nprocs
 
 	sump = 0.0
 	print("Doing a summation")

@@ -20,7 +20,7 @@ def psum(args):
             sump += f(x) * stride
             x += stride * nprocs 
 
-	print "Finished partial summation %f"  %sump
+	print("Finished partial summation {}".format(sump))
 	return sump
 
 def sum_total(args):

@@ -98,7 +98,9 @@ class Node:
                 #print "Result produced %s (worker: %d)" %(oper.val, workerid)
         return opers
 
-
+    def insert_op(self, dstport, oper):
+        print("Received Oper {}".format(oper.val))
+        self.inport[dstport].append(oper)
     def match(self):
         args = []
         for port in self.inport:
@@ -109,6 +111,9 @@ class Node:
             for inport in self.inport:
                 arg = inport[0]
                 inport.remove(arg)
+            
+            print("Received args {}".format(args[0].val))
+
             return args
         else:
             return None
@@ -248,19 +253,18 @@ class Scheduler:
 
         affinity = node.affinity[0]
         if len(node.affinity) > 1:
-            node.affinity = node.affinity[1:] + [node.affinity[0]]
+            node.affinity = node.affinity[1:] + [node.affinity[0]] #shift the affinity list
         return affinity
 
 
     def issue(self, node, args):
-
-        #	print "Args %s " %args	
         task = Task(node.f, node.id, args)
         self.tasks += [task]
+       # print("Creating Task {} Tasks: {}".format(node, self.tasks))
+
 
     def all_idle(self, workers):
-        #print [(w.idle, w.name) for w in workers]	
-        #print "All idle? %s" %reduce(lambda a, b: a and b, [w.idle for w in workers])
+        #return 0
         if self.mpi_rank == 0:
             return len(self.waiting) == self.n_workers * self.mpi_size
         else:
@@ -315,6 +319,7 @@ class Scheduler:
             while len(tasks) > 0 and len(self.waiting) > 0:
                 task = tasks.pop(0)
                 wid = self.check_affinity(task)
+                #print("Affinity is {} {}".format(task, wid))
                 if wid != None:
                     if wid in self.waiting:
                         self.waiting.remove(wid)

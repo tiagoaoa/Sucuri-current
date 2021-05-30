@@ -38,9 +38,10 @@ class Source(Node): #source class
 
     def run(self, args, workerid, operq):
         for line in self.it:
-            result = self.f(line, args)
-
             tag = self.tagcounter
+            
+            result = self.f(line, args)
+            print("Creating oper {}".format(result))
             opers = self.create_oper(TaggedValue(result, tag), workerid, operq)
             for oper in opers:
                 oper.request_task = False
@@ -48,7 +49,6 @@ class Source(Node): #source class
             self.tagcounter += 1
             opers = [Oper(workerid, None, None, None)] #sinalize eof and request a task
             self.sendops(opers, operq)
-
     def f(self, line, args):
         #default source operation
         return line
@@ -94,7 +94,7 @@ class FilterTagged(Node): #produce operands in the form of TaggedValue, with the
     def match(self):
         match_d = self.match_dict
         tags = [tag for tag in match_d if len(match_d[tag]) == len(self.inport)]
-        #print(tags)
+        #print("Receiving args {}".format(tags)
         if len(tags) > 0:
             tag = tags[0]
         else:
