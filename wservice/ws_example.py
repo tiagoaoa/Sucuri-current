@@ -13,7 +13,7 @@ req_node, resp_node = sched.set_wservice(("localhost", 8000))
 
 
 def filter_function(args):
-    return args[0][0]+1
+    return args[0]+1
 
 
 
